@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-'''fake.py
+'''embody
 
-Generates fake implementations from C header files
+Tools for embedded C development. Currently just generates fake implementations
+from C header files.
 
 Usage:
-    fake.py <header> [<outfile_basename>]
+    embody fake <header> [<fake_src> <fake_header>]
 '''
 
 from docopt import docopt
@@ -13,14 +14,16 @@ import embody
 
 
 def main(args):
-    infilename = args['<header>']
-    outfile_basename = args['<outfile_basename>']
+    in_filename = args['<header>']
+    fake_src_filename = args['<fake_src>']
+    fake_header_filename = args['<fake_header>']
+    if fake_src_filename is None:
+        basename = in_filename.split('.')[0]
+        fake_src_filename = 'Fake' + basename + '.c'
+        fake_header_filename = 'Fake' + basename + '.h'
+    embody.generate_fake(in_filename, fake_src_filename,
+                         fake_header_filename)
 
-    fake_src, fake_header = embody.open_fakefiles(
-        infilename, outfile_basename)
-    embody.parse_header(args['<header>'])
-    fake_src.close()
-    fake_header.close()
 if __name__ == '__main__':
     args = docopt(__doc__)
     main(args)
