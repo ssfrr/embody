@@ -1,12 +1,12 @@
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # pycparser: c_generator.py
 #
 # C code generator from pycparser AST nodes.
 #
 # Copyright (C) 2008-2012, Eli Bendersky
 # License: BSD
-#------------------------------------------------------------------------------
-from . import c_ast
+# -----------------------------------------------------------------------------
+from pycparser import c_ast
 
 
 class CGenerator(object):
@@ -30,7 +30,6 @@ class CGenerator(object):
         return getattr(self, method, self.generic_visit)(node)
 
     def generic_visit(self, node):
-        #~ print('generic:', type(node))
         if node is None:
             return ''
         else:
@@ -68,16 +67,18 @@ class CGenerator(object):
             return '%s%s' % (n.op, operand)
 
     def visit_BinaryOp(self, n):
-        lval_str = self._parenthesize_if(n.left,
-                            lambda d: not self._is_simple_node(d))
-        rval_str = self._parenthesize_if(n.right,
-                            lambda d: not self._is_simple_node(d))
+        lval_str = self._parenthesize_if(
+            n.left,
+            lambda d: not self._is_simple_node(d))
+        rval_str = self._parenthesize_if(
+            n.right,
+            lambda d: not self._is_simple_node(d))
         return '%s %s %s' % (lval_str, n.op, rval_str)
 
     def visit_Assignment(self, n):
         rval_str = self._parenthesize_if(
-                            n.rvalue,
-                            lambda n: isinstance(n, c_ast.Assignment))
+            n.rvalue,
+            lambda n: isinstance(n, c_ast.Assignment))
         return '%s %s %s' % (self.visit(n.lvalue), n.op, rval_str)
 
     def visit_IdentifierType(self, n):
@@ -96,7 +97,8 @@ class CGenerator(object):
         # explicitly only for the first declaration in a list.
         #
         s = n.name if no_type else self._generate_decl(n)
-        if n.bitsize: s += ' : ' + self.visit(n.bitsize)
+        if n.bitsize:
+            s += ' : ' + self.visit(n.bitsize)
         if n.init:
             s += ' = ' + self._visit_expr(n.init)
         return s
@@ -105,12 +107,13 @@ class CGenerator(object):
         s = self.visit(n.decls[0])
         if len(n.decls) > 1:
             s += ', ' + ', '.join(self.visit_Decl(decl, no_type=True)
-                                    for decl in n.decls[1:])
+                                  for decl in n.decls[1:])
         return s
 
     def visit_Typedef(self, n):
         s = ''
-        if n.storage: s += ' '.join(n.storage) + ' '
+        if n.storage:
+            s += ' '.join(n.storage) + ' '
         s += self._generate_type(n.type)
         return s
 
@@ -132,7 +135,8 @@ class CGenerator(object):
 
     def visit_Enum(self, n):
         s = 'enum'
-        if n.name: s += ' ' + n.name
+        if n.name:
+            s += ' ' + n.name
         if n.values:
             s += ' {'
             for i, enumerator in enumerate(n.values.enumerators):
@@ -180,7 +184,8 @@ class CGenerator(object):
 
     def visit_Return(self, n):
         s = 'return'
-        if n.expr: s += ' ' + self.visit(n.expr)
+        if n.expr:
+            s += ' ' + self.visit(n.expr)
         return s + ';'
 
     def visit_Break(self, n):
@@ -197,7 +202,8 @@ class CGenerator(object):
 
     def visit_If(self, n):
         s = 'if ('
-        if n.cond: s += self.visit(n.cond)
+        if n.cond:
+            s += self.visit(n.cond)
         s += ')\n'
         s += self._generate_stmt(n.iftrue, add_indent=True)
         if n.iffalse:
@@ -207,18 +213,22 @@ class CGenerator(object):
 
     def visit_For(self, n):
         s = 'for ('
-        if n.init: s += self.visit(n.init)
+        if n.init:
+            s += self.visit(n.init)
         s += ';'
-        if n.cond: s += ' ' + self.visit(n.cond)
+        if n.cond:
+            s += ' ' + self.visit(n.cond)
         s += ';'
-        if n.next: s += ' ' + self.visit(n.next)
+        if n.next:
+            s += ' ' + self.visit(n.next)
         s += ')\n'
         s += self._generate_stmt(n.stmt, add_indent=True)
         return s
 
     def visit_While(self, n):
         s = 'while ('
-        if n.cond: s += self.visit(n.cond)
+        if n.cond:
+            s += self.visit(n.cond)
         s += ')\n'
         s += self._generate_stmt(n.stmt, add_indent=True)
         return s
@@ -227,7 +237,8 @@ class CGenerator(object):
         s = 'do\n'
         s += self._generate_stmt(n.stmt, add_indent=True)
         s += self._make_indent() + 'while ('
-        if n.cond: s += self.visit(n.cond)
+        if n.cond:
+            s += self.visit(n.cond)
         s += ');'
         return s
 
@@ -298,15 +309,17 @@ class CGenerator(object):
             some statements in this context.
         """
         typ = type(n)
-        if add_indent: self.indent_level += 2
+        if add_indent:
+            self.indent_level += 2
         indent = self._make_indent()
-        if add_indent: self.indent_level -= 2
+        if add_indent:
+            self.indent_level -= 2
 
         if typ in (
                 c_ast.Decl, c_ast.Assignment, c_ast.Cast, c_ast.UnaryOp,
-                c_ast.BinaryOp, c_ast.TernaryOp, c_ast.FuncCall, c_ast.ArrayRef,
-                c_ast.StructRef, c_ast.Constant, c_ast.ID, c_ast.Typedef,
-                c_ast.ExprList):
+                c_ast.BinaryOp, c_ast.TernaryOp, c_ast.FuncCall,
+                c_ast.ArrayRef, c_ast.StructRef, c_ast.Constant, c_ast.ID,
+                c_ast.Typedef, c_ast.ExprList):
             # These can also appear in an expression context so no semicolon
             # is added to them automatically
             #
@@ -324,8 +337,10 @@ class CGenerator(object):
         """ Generation from a Decl node.
         """
         s = ''
-        if n.funcspec: s = ' '.join(n.funcspec) + ' '
-        if n.storage: s += ' '.join(n.storage) + ' '
+        if n.funcspec:
+            s = ' '.join(n.funcspec) + ' '
+        if n.storage:
+            s += ' '.join(n.storage) + ' '
         s += self._generate_type(n.type)
         return s
 
@@ -336,11 +351,11 @@ class CGenerator(object):
             generation from it.
         """
         typ = type(n)
-        #~ print(n, modifiers)
 
         if typ == c_ast.TypeDecl:
             s = ''
-            if n.quals: s += ' '.join(n.quals) + ' '
+            if n.quals:
+                s += ' '.join(n.quals) + ' '
             s += self.visit(n.type)
 
             nstr = n.declname if n.declname else ''
@@ -350,11 +365,13 @@ class CGenerator(object):
             #
             for i, modifier in enumerate(modifiers):
                 if isinstance(modifier, c_ast.ArrayDecl):
-                    if (i != 0 and isinstance(modifiers[i - 1], c_ast.PtrDecl)):
+                    if (i != 0 and isinstance(modifiers[i - 1],
+                                              c_ast.PtrDecl)):
                         nstr = '(' + nstr + ')'
                     nstr += '[' + self.visit(modifier.dim) + ']'
                 elif isinstance(modifier, c_ast.FuncDecl):
-                    if (i != 0 and isinstance(modifiers[i - 1], c_ast.PtrDecl)):
+                    if (i != 0 and isinstance(modifiers[i - 1],
+                                              c_ast.PtrDecl)):
                         nstr = '(' + nstr + ')'
                     nstr += '(' + self.visit(modifier.args) + ')'
                 elif isinstance(modifier, c_ast.PtrDecl):
@@ -362,7 +379,8 @@ class CGenerator(object):
                         nstr = '* %s %s' % (' '.join(modifier.quals), nstr)
                     else:
                         nstr = '*' + nstr
-            if nstr: s += ' ' + nstr
+            if nstr:
+                s += ' ' + nstr
             return s
         elif typ == c_ast.Decl:
             return self._generate_decl(n.type)
@@ -394,7 +412,5 @@ class CGenerator(object):
         """ Returns True for nodes that are "simple" - i.e. nodes that always
             have higher precedence than operators.
         """
-        return isinstance(n,(   c_ast.Constant, c_ast.ID, c_ast.ArrayRef,
-                                c_ast.StructRef, c_ast.FuncCall))
-
-
+        return isinstance(n, (c_ast.Constant, c_ast.ID, c_ast.ArrayRef,
+                              c_ast.StructRef, c_ast.FuncCall))
