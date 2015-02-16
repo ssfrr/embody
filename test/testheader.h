@@ -14,6 +14,6 @@ point2 point2_add(point2 p1, point2 p2);
 float point2_length(point2 p);
 void fill_point2(point2 *p, float x, float y);
 void noop(void);
-void something(void *thing);
+void *something(void *thing);
 
 #endif
