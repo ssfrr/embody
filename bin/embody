@@ -6,7 +6,15 @@ Tools for embedded C development. Currently just generates fake implementations
 from C header files.
 
 Usage:
-    embody fake <header> [<fake_src> <fake_header>]
+ embody fake [options] <header> [-- <cpp_args>...]
+
+Options:
+ -d <outdir>, --outdir=<outdir>     Directory for generated header and source
+ -s <outsrc>, --outsrc=<outsrc>     Filename for generated source file
+                                    (Overrides -d option)
+ -h <outhead>, --outhead=<outhead>  Filename for generated header file
+                                    (Overrides -d option)
+ -p <prefix>, --prefix=<prefix>     Prefix for generated file (default: Fake)
 '''
 
 from docopt import docopt
@@ -15,14 +23,24 @@ import embody
 
 def main(args):
     in_filename = args['<header>']
-    fake_src_filename = args['<fake_src>']
-    fake_header_filename = args['<fake_header>']
-    if fake_src_filename is None:
-        basename = in_filename.split('.')[0]
-        fake_src_filename = 'Fake' + basename + '.c'
-        fake_header_filename = 'Fake' + basename + '.h'
+    out_dir = args['--outdir']
+    out_src = args['--outsrc']
+    out_header = args['--outhead']
+    prefix = args['--prefix']
+    if prefix is None:
+        prefix = 'Fake'
+    cpp_args = args['<cpp_args>']
+    if cpp_args[0] == '--':
+        cpp_args = cpp_args[1:]
+    fake_src_filename = embody.make_output_name(
+        in_filename, out_src, out_dir, prefix, '.c')
+    fake_header_filename = embody.make_output_name(
+        in_filename, out_header, out_dir, prefix, '.h')
     embody.generate_fake(in_filename, fake_src_filename,
-                         fake_header_filename)
+                         fake_header_filename, cpp_args=cpp_args)
+    print('Generated %s' % fake_src_filename)
+    print('Generated %s' % fake_header_filename)
+
 
 if __name__ == '__main__':
     args = docopt(__doc__)
