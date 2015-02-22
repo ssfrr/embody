@@ -19,6 +19,7 @@ Options:
  -v, --verbose                      Print extra info
 '''
 
+import sys
 from docopt import docopt
 import embody
 import coloredlogs
@@ -46,10 +47,12 @@ def main(args):
     try:
         embody.generate_fake(in_filename, out_dir, out_src, out_header,
                             prefix, cpp_args=cpp_args)
+        return 0
     except Exception as e:
         logger.error(e)
+        return -1
 
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    main(args)
+    sys.exit(main(args))
