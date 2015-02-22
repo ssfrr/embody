@@ -164,6 +164,18 @@ def _make_output_name(in_name, out_name=None,
     return path.join(pathname, prefix + basename + extension)
 
 
+def _ask_user(prompt, default=False):
+    prompt += ' [Y/n] ' if default else ' [y/N] '
+    inpt = raw_input(prompt)
+    if len(inpt) == 0:
+        return default
+    if default and inpt[0].lower() == 'n':
+        return False
+    if not default and inpt[0].lower() == 'y':
+        return True
+    return default
+
+
 def _check_output_path(outpath):
     '''Checks the given output path to make sure we'll be able to create
     the output file there, creating the directories if necessary'''
@@ -171,8 +183,10 @@ def _check_output_path(outpath):
     if not path.isdir(dirname):
         if path.exists(dirname):
             raise EmbodyError('%s exists and is not a directory' % dirname)
-        create = raw_input('%s does not exist, create it? [y/N] ' % dirname)
-        if len(create) > 0 and create[0].lower() == 'y':
+        if _ask_user('%s does not exist, create it?' % dirname):
             os.makedirs(dirname)
         else:
+            raise EmbodyError("Can't create file at %s" % outpath)
+    elif path.exists(outpath):
+        if not _ask_user('%s exists, overwrite?' % outpath):
             raise EmbodyError("Can't create file at %s" % outpath)
