@@ -1,13 +1,24 @@
 #!/usr/bin/env python
 
-'''embody
+'''
+
+embody
 
 Tools for embedded C development. Currently just generates fake implementations
-from C header files.
+from C header files. Configuration can be given as command line options or in a
+.embodyrc.yaml file, or in .embody/config.yaml. These config files can be
+placed in $HOME, or in the project directory. More specific config files (e.g.
+per project) override more general ones (e.g. in $HOME). Command line arguments
+take precedence.
+
+Configuration files are a yaml dictionary. Keys are in the format of
+'COMMAND_OPTION'. For example, to set the prefix for fake generation, you could
+use `fake_prefix: "myprefix"`.
+
 
 Usage:
- embody fake [options] <header> [-- <cpp_args>...]
- embody --help
+ embody fake [options] <header> [-- <cppargs>...]
+
 
 Options:
  -d <outdir>, --outdir=<outdir>     Directory for generated header and source
@@ -17,6 +28,7 @@ Options:
                                     (Overrides -d option)
  -p <prefix>, --prefix=<prefix>     Prefix for generated file (default: Fake)
  -v, --verbose                      Print extra info
+ --help                             Print this helpful message
 '''
 
 import sys
@@ -33,6 +45,7 @@ logger.addHandler(coloredlogs.ColoredStreamHandler(
     show_hostname=False))
 logger.setLevel(logging.INFO)
 
+
 def main(args):
     if args['--verbose']:
         logger.setLevel(logging.DEBUG)
@@ -41,14 +54,20 @@ def main(args):
     out_src = args['--outsrc']
     out_header = args['--outhead']
     prefix = args['--prefix']
-    cpp_args = args['<cpp_args>']
+    cpp_args = args['<cppargs>']
     if len(cpp_args) > 0 and cpp_args[0] == '--':
         cpp_args = cpp_args[1:]
+    # generate_fake distinguishes between an empty list of cpp_args, meaning
+    # don't give any arguments, or None, which means pull the arguments from
+    # the configuration. We don't have that flexibility from the command line,
+    # so if the user doesn't supply any args we assume we want to load them.
+    if len(cpp_args) == 0:
+        cpp_args = None
     try:
         embody.generate_fake(in_filename, out_dir, out_src, out_header,
-                            prefix, cpp_args=cpp_args)
+                             prefix, cpp_args)
         return 0
-    except Exception as e:
+    except embody.EmbodyException as e:
         logger.error(e)
         return -1
 

@@ -2,11 +2,16 @@ from jinja2 import Environment, PackageLoader
 from pycparser import parse_file, c_ast
 from pycparser.c_generator import CGenerator
 import os
+import sys
 from os import path
 import yaml
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class EmbodyException(Exception):
+    pass
 
 
 class FuncDeclVisitor(c_ast.NodeVisitor):
@@ -20,21 +25,26 @@ class FuncDeclVisitor(c_ast.NodeVisitor):
 
 def generate_fake(in_filename,
                   out_dir=None, out_src=None, out_header=None,
-                  prefix=None, cpp_args=[]):
+                  prefix=None, cpp_args=None):
     '''Parses the given header file and generates a fake implementation C file
     and fake wrapper header file. See _make_output_name for details on how the
     output filenames are generated from the arguments.'''
     cfg = _get_config()
     logger.debug('Loaded config: %s' % cfg)
+
+    if prefix is None:
+        prefix = cfg.get('fake_prefix', None)
+    if out_dir is None:
+        out_dir = cfg.get('fake_outdir', None)
+    if cpp_args is None:
+        cpp_args = cfg.get('fake_cpp_args', None)
+
     logger.info('Parsing %s...' % in_filename)
     ast = parse_file(in_filename, use_cpp=True, cpp_args=cpp_args)
     if not ast.children():
-        raise ValueError('Parsed AST is empty')
+        raise EmbodyException('Parsed AST is empty')
     v = FuncDeclVisitor()
     v.visit(ast)
-
-    if prefix is None:
-        prefix = 'Fake'
 
     fake_src_filename = _make_output_name(
         in_filename, out_src, out_dir, prefix, '.c')
@@ -65,16 +75,20 @@ def generate_fake(in_filename,
 def _get_config():
     '''Searches for embody config files and returns a dictionary of options. A
     config file is called either .embodyrc.yaml or .embody/config.yaml. We
-    first search in $HOME, then the project root, then any directories in the
-    path between the project root and the current directory. The project root
-    is assumed to be the first parent directory where we find a .git or .hg
+    first load the default config shipped with the embody package. Then we
+    search in $HOME, then the project root, then any directories in the path
+    between the project root and the current directory. The project root is
+    assumed to be the first parent directory where we find a .git or .hg
     directory.
 
     All config files found are combined, with later files overriding earlier.
     This means that you can have settings in $HOME/.embodyrc.yaml that are
     generally useful, and then override them on a project-by-project basis'''
 
-    config = _get_dir_config(os.getenv('HOME'))
+    # TODO: there's probably a better way to get the module path. I'm not sure
+    # if this works if they do a "import embody as e"
+    config = _get_dir_config(sys.modules['embody'].__path__[0])
+    config.update(_get_dir_config(os.getenv('HOME')))
     config.update(_get_project_config(os.getcwdu()))
     return config
 
@@ -82,7 +96,6 @@ def _get_config():
 def _get_project_config(path):
     '''Looks for a config file in the current directory, and all parent
     directories until it finds a .git or .hg file'''
-
 
     config = {}
     root_files = {'.git', '.hg'}
@@ -128,7 +141,7 @@ def _get_dir_config(path):
 
 
 def _make_output_name(in_name, out_name=None,
-                     out_dir=None, prefix=None, extension=None):
+                      out_dir=None, prefix=None, extension=None):
     '''Generates a full output filename given the input filename, a target
     output filename, a target directory, a prefix, and an extension. If the
     output name is given it is used unchanged. If a directory is given, the
