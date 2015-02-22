@@ -7,6 +7,7 @@ from C header files.
 
 Usage:
  embody fake [options] <header> [-- <cpp_args>...]
+ embody --help
 
 Options:
  -d <outdir>, --outdir=<outdir>     Directory for generated header and source
@@ -19,7 +20,16 @@ Options:
 
 from docopt import docopt
 import embody
+import coloredlogs
+import logging
 
+logger = logging.getLogger()
+logger.addHandler(coloredlogs.ColoredStreamHandler(
+    show_name=False,
+    show_severity=False,
+    show_timestamps=False,
+    show_hostname=False))
+logger.setLevel(logging.DEBUG)
 
 def main(args):
     in_filename = args['<header>']
@@ -27,19 +37,14 @@ def main(args):
     out_src = args['--outsrc']
     out_header = args['--outhead']
     prefix = args['--prefix']
-    if prefix is None:
-        prefix = 'Fake'
     cpp_args = args['<cpp_args>']
     if len(cpp_args) > 0 and cpp_args[0] == '--':
         cpp_args = cpp_args[1:]
-    fake_src_filename = embody.make_output_name(
-        in_filename, out_src, out_dir, prefix, '.c')
-    fake_header_filename = embody.make_output_name(
-        in_filename, out_header, out_dir, prefix, '.h')
-    embody.generate_fake(in_filename, fake_src_filename,
-                         fake_header_filename, cpp_args=cpp_args)
-    print('Generated %s' % fake_src_filename)
-    print('Generated %s' % fake_header_filename)
+    try:
+        embody.generate_fake(in_filename, out_dir, out_src, out_header,
+                            prefix, cpp_args=cpp_args)
+    except Exception as e:
+        logger.error(e)
 
 
 if __name__ == '__main__':
