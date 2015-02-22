@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class EmbodyException(Exception):
+class EmbodyError(Exception):
     pass
 
 
@@ -42,14 +42,16 @@ def generate_fake(in_filename,
     logger.info('Parsing %s...' % in_filename)
     ast = parse_file(in_filename, use_cpp=True, cpp_args=cpp_args)
     if not ast.children():
-        raise EmbodyException('Parsed AST is empty')
+        raise EmbodyError('Parsed AST is empty')
     v = FuncDeclVisitor()
     v.visit(ast)
 
     fake_src_filename = _make_output_name(
         in_filename, out_src, out_dir, prefix, '.c')
+    _check_output_path(fake_src_filename)
     fake_header_filename = _make_output_name(
         in_filename, out_header, out_dir, prefix, '.h')
+    _check_output_path(fake_header_filename)
 
     env = Environment(loader=PackageLoader('embody', 'templates'))
     with open(fake_header_filename, 'w') as fake_header:
@@ -160,3 +162,17 @@ def _make_output_name(in_name, out_name=None,
     # remove the final extension
     basename = '.'.join(basename.split('.')[:-1])
     return path.join(pathname, prefix + basename + extension)
+
+
+def _check_output_path(outpath):
+    '''Checks the given output path to make sure we'll be able to create
+    the output file there, creating the directories if necessary'''
+    dirname = path.split(outpath)[0]
+    if not path.isdir(dirname):
+        if path.exists(dirname):
+            raise EmbodyError('%s exists and is not a directory' % dirname)
+        create = raw_input('%s does not exist, create it? [y/N] ' % dirname)
+        if len(create) > 0 and create[0].lower() == 'y':
+            os.makedirs(dirname)
+        else:
+            raise EmbodyError("Can't create file at %s" % outpath)

@@ -67,7 +67,7 @@ def main(args):
         embody.generate_fake(in_filename, out_dir, out_src, out_header,
                              prefix, cpp_args)
         return 0
-    except embody.EmbodyException as e:
+    except embody.EmbodyError as e:
         logger.error(e)
         return -1
 
