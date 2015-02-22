@@ -30,7 +30,7 @@ def main(args):
     if prefix is None:
         prefix = 'Fake'
     cpp_args = args['<cpp_args>']
-    if cpp_args[0] == '--':
+    if len(cpp_args) > 0 and cpp_args[0] == '--':
         cpp_args = cpp_args[1:]
     fake_src_filename = embody.make_output_name(
         in_filename, out_src, out_dir, prefix, '.c')

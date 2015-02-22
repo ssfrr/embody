@@ -3,6 +3,7 @@ from pycparser import parse_file, c_ast
 from pycparser.c_generator import CGenerator
 import os
 from os import path
+import yaml
 
 
 def make_output_name(in_name, out_name,
@@ -38,6 +39,7 @@ class FuncDeclVisitor(c_ast.NodeVisitor):
 
 def generate_fake(in_filename, fake_src_filename,
                   fake_header_filename, cpp_args=[]):
+    cfg = _get_config()
     ast = parse_file(in_filename, use_cpp=True, cpp_args=cpp_args)
     v = FuncDeclVisitor()
     v.visit(ast)
@@ -59,3 +61,62 @@ def generate_fake(in_filename, fake_src_filename,
             'funcs': v.stubs
         }
         fake_src.write(fake_src_template.render(**ctx))
+
+
+def _get_config():
+    '''Searches for embody config files and returns a dictionary of options. A
+    config file is called either .embodyrc.yaml or .embody/config.yaml. We
+    first search in $HOME, then the project root, then any directories in the
+    path between the project root and the current directory. The project root
+    is assumed to be the first parent directory where we find a .git or .hg
+    directory.
+
+    All config files found are combined, with later files overriding earlier.
+    This means that you can have settings in $HOME/.embodyrc.yaml that are
+    generally useful, and then override them on a project-by-project basis'''
+
+    config = _get_dir_config(os.getenv('HOME'))
+    config.update(_get_project_config(os.getcwdu()))
+    return config
+
+
+def _get_project_config(path):
+    '''Looks for a config file in the current directory, and all parent
+    directories until it finds a .git or .hg file'''
+
+
+    config = {}
+    root_files = {'.git', '.hg'}
+    dirfiles = set(os.listdir(path))
+    # start by recursively getting the parent config if we're not at the
+    # project root
+    if not dirfiles.intersection(root_files):
+        parentdir = os.path.split(path)[0]
+        if parentdir != path:
+            config.update(_get_project_config(parentdir))
+
+    # now override the parent's config with any data from the current directory
+    config.update(_get_dir_config(path))
+    return config
+
+
+def _get_dir_config(path):
+    '''Looks for a config file in the current directory'''
+    config = {}
+    cfgfilename = '.embodyrc.yaml'
+    cfgdirname = '.embody'
+    cfgdirfilename = 'config.yaml'
+
+    dirfiles = os.listdir(path)
+
+    if cfgfilename in dirfiles:
+        with open(os.path.join(path, cfgfilename)) as cfgfile:
+            config.update(yaml.load(cfgfile))
+
+    if cfgdirname in dirfiles and \
+            cfgdirfilename in os.listdir(
+                os.path.join(path, cfgdirname)):
+        with open(os.path.join(path, cfgdirname, cfgdirfilename)) as cfgfile:
+            config.update(yaml.load(cfgfile))
+
+    return config
