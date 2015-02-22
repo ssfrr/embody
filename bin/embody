@@ -16,6 +16,7 @@ Options:
  -h <outhead>, --outhead=<outhead>  Filename for generated header file
                                     (Overrides -d option)
  -p <prefix>, --prefix=<prefix>     Prefix for generated file (default: Fake)
+ -v, --verbose                      Print extra info
 '''
 
 from docopt import docopt
@@ -29,9 +30,11 @@ logger.addHandler(coloredlogs.ColoredStreamHandler(
     show_severity=False,
     show_timestamps=False,
     show_hostname=False))
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 def main(args):
+    if args['--verbose']:
+        logger.setLevel(logging.DEBUG)
     in_filename = args['<header>']
     out_dir = args['--outdir']
     out_src = args['--outsrc']

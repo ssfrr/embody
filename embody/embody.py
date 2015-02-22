@@ -25,6 +25,7 @@ def generate_fake(in_filename,
     and fake wrapper header file. See _make_output_name for details on how the
     output filenames are generated from the arguments.'''
     cfg = _get_config()
+    logger.debug('Loaded config: %s' % cfg)
     logger.info('Parsing %s...' % in_filename)
     ast = parse_file(in_filename, use_cpp=True, cpp_args=cpp_args)
     if not ast.children():
