@@ -53,6 +53,13 @@ def generate_fake(in_filename,
         in_filename, out_header, out_dir, prefix, '.h')
     _check_output_path(fake_header_filename)
 
+    # TODO: we need to figure out how to only generate function definitions
+    # from functions actually declared in the header, and not from includes. We
+    # also should avoid generating definitions for functions declared inline.
+    # We should also check the return type of the declared function and make
+    # sure that our generated function returns an object of that type, to avoid
+    # compiler warnings.
+
     env = Environment(loader=PackageLoader('embody', 'templates'))
     with open(fake_header_filename, 'w') as fake_header:
         fake_header_template = env.get_template('fake.h')
