@@ -1,1 +1,8 @@
 fake_prefix: 'Fake'
+module_outdir: 'src'
+module_testdir: 'test'
+project_structure: [
+    'src/',
+    'test/',
+    'README.md',
+    'LICENSE']

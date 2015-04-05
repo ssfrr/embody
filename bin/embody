@@ -13,15 +13,19 @@ take precedence.
 
 Configuration files are a yaml dictionary. Keys are in the format of
 'COMMAND_OPTION'. For example, to set the prefix for fake generation, you could
-use `fake_prefix: "myprefix"`.
+use `fake_prefix: "myprefix"`. Pro Tip: use the `-v` option to see the loaded
+configuration.
 
 
 Usage:
  embody fake [options] <header> [-- <cppargs>...]
+ embody project [options] <name>
+ embody module [options] <name>
 
 
 Options:
  -d <outdir>, --outdir=<outdir>     Directory for generated header and source
+ -t <testdir>, --testdir=<testdir>  Directory for generated test files
  -s <outsrc>, --outsrc=<outsrc>     Filename for generated source file
                                     (Overrides -d option)
  -h <outhead>, --outhead=<outhead>  Filename for generated header file
