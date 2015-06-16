@@ -13,14 +13,30 @@ take precedence.
 
 Configuration files are a yaml dictionary. Keys are in the format of
 'COMMAND_OPTION'. For example, to set the prefix for fake generation, you could
-use `fake_prefix: "myprefix"`. Pro Tip: use the `-v` option to see the loaded
-configuration.
+use `fake_prefix: "myprefix"`. Pro Tip: use the `-v` option to see where embody
+has loaded the configuration.
 
+Subcommands:
+    fake
+        Generate a fake header/implementation pair that implements the given
+        header file
+
+    project
+        Generate an initial skeleton project
+
+    module
+        Generate a fake module within the current project
+
+    showconfig
+        Show the loaded configuration (use the -v flag to see where it's being
+        loaded from)
 
 Usage:
  embody fake [options] <header> [-- <cppargs>...]
  embody project [options] <name>
  embody module [options] <name>
+ embody showconfig [options]
+ embody test
 
 
 Options:
@@ -40,6 +56,7 @@ from docopt import docopt
 import embody
 import coloredlogs
 import logging
+import pprint
 
 logger = logging.getLogger()
 logger.addHandler(coloredlogs.ColoredStreamHandler(
@@ -50,9 +67,7 @@ logger.addHandler(coloredlogs.ColoredStreamHandler(
 logger.setLevel(logging.INFO)
 
 
-def main(args):
-    if args['--verbose']:
-        logger.setLevel(logging.DEBUG)
+def dispatch_cmd(args):
     in_filename = args['<header>']
     out_dir = args['--outdir']
     out_src = args['--outsrc']
@@ -67,9 +82,26 @@ def main(args):
     # so if the user doesn't supply any args we assume we want to load them.
     if len(cpp_args) == 0:
         cpp_args = None
-    try:
+    if args['fake']:
         embody.generate_fake(in_filename, out_dir, out_src, out_header,
                              prefix, cpp_args)
+    elif args['test']:
+        embody.test_templates()
+    elif args['module']:
+        logger.warning("Not Implemented")
+    elif args['project']:
+        logger.warning("Not Implemented")
+    elif args['showconfig']:
+        config = embody.get_config()
+        pprint.pprint(config)
+
+
+def main(args):
+    if args['--verbose']:
+        logger.setLevel(logging.DEBUG)
+    logger.debug("Command line options: \n-----\n%s\n-----" % args)
+    try:
+        dispatch_cmd(args)
         return 0
     except embody.EmbodyError as e:
         logger.error(e)

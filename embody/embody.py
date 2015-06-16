@@ -5,9 +5,14 @@ import os
 import sys
 from os import path
 import yaml
+from filters import template_filters
 import logging
 
 logger = logging.getLogger(__name__)
+template_env = Environment(loader=PackageLoader('embody', 'templates'),
+                           trim_blocks=True,
+                           keep_trailing_newline=True)
+template_env.filters.update(template_filters)
 
 
 class EmbodyError(Exception):
@@ -23,21 +28,39 @@ class FuncDeclVisitor(c_ast.NodeVisitor):
         self.stubs.append(gen.visit(node))
 
 
+def _generate_file(filename, template_filename, render_context):
+    with open(filename, 'w') as f:
+        template = template_env.get_template(template_filename)
+        f.write(template.render(**render_context))
+        logger.info('Generated %s' % filename)
+
+
+def generate_source(filename, **ctx):
+    ctx['use_include_guard'] = False
+    ctx['filename'] = path.basename(filename)
+    _generate_file(filename, 'template.c', ctx)
+
+
+def generate_header(filename, **ctx):
+    ctx['use_include_guard'] = True
+    ctx['filename'] = path.basename(filename)
+    _generate_file(filename, 'template.h', ctx)
+
+
 def generate_fake(in_filename,
                   out_dir=None, out_src=None, out_header=None,
                   prefix=None, cpp_args=None):
     '''Parses the given header file and generates a fake implementation C file
     and fake wrapper header file. See _make_output_name for details on how the
     output filenames are generated from the arguments.'''
-    cfg = _get_config()
-    logger.debug('Loaded config: %s' % cfg)
+    cfg = get_config()
 
     if prefix is None:
         prefix = cfg.get('fake_prefix', None)
     if out_dir is None:
         out_dir = cfg.get('fake_outdir', None)
     if cpp_args is None:
-        cpp_args = cfg.get('fake_cpp_args', None)
+        cpp_args = cfg.get('fake_cpp_args', '')
 
     logger.info('Parsing %s...' % in_filename)
     ast = parse_file(in_filename, use_cpp=True, cpp_args=cpp_args)
@@ -60,28 +83,17 @@ def generate_fake(in_filename,
     # sure that our generated function returns an object of that type, to avoid
     # compiler warnings.
 
-    env = Environment(loader=PackageLoader('embody', 'templates'))
-    with open(fake_header_filename, 'w') as fake_header:
-        fake_header_template = env.get_template('fake.h')
-        ctx = {
-            'include_guard':
-                path.basename(fake_header_filename).upper().replace('.', '_'),
-            'header': path.basename(in_filename),
-        }
-        fake_header.write(fake_header_template.render(**ctx))
-        logger.info('Generated %s' % fake_header_filename)
-
-    with open(fake_src_filename, 'w') as fake_src:
-        fake_src_template = env.get_template('fake.c')
-        ctx = {
-            'fake_include': path.basename(fake_header_filename),
-            'funcs': v.stubs
-        }
-        fake_src.write(fake_src_template.render(**ctx))
-        logger.info('Generated %s' % fake_src_filename)
+    generate_header(fake_header_filename)
+    generate_source(fake_src_filename)
 
 
-def _get_config():
+
+def test_templates():
+    pass
+
+
+loaded_config = None
+def get_config(force_reload=False):
     '''Searches for embody config files and returns a dictionary of options. A
     config file is called either .embodyrc.yaml or .embody/config.yaml. We
     first load the default config shipped with the embody package. Then we
@@ -94,12 +106,16 @@ def _get_config():
     This means that you can have settings in $HOME/.embodyrc.yaml that are
     generally useful, and then override them on a project-by-project basis'''
 
-    # TODO: there's probably a better way to get the module path. I'm not sure
-    # if this works if they do a "import embody as e"
-    config = _get_dir_config(sys.modules['embody'].__path__[0])
-    config.update(_get_dir_config(os.getenv('HOME')))
-    config.update(_get_project_config(os.getcwdu()))
-    return config
+    global loaded_config
+    if loaded_config is not None and not force_reload:
+        return loaded_config
+    else:
+        # TODO: there's probably a better way to get the module path. I'm not
+        # sure if this works if they do a "import embody as e"
+        loaded_config = _get_dir_config(sys.modules['embody'].__path__[0])
+        loaded_config.update(_get_dir_config(os.getenv('HOME')))
+        loaded_config.update(_get_project_config(os.getcwdu()))
+        return loaded_config
 
 
 def _get_project_config(path):
