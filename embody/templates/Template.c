@@ -1,4 +1,4 @@
-{% extends "common.c" %}
+{% extends "Common.c" %}
 
 {% block body %}
 {% filter section_header %}Static Function Declarations{% endfilter %}
