@@ -71,7 +71,6 @@ def generate_fake(in_filename, cfg):
 def generate_module(module_name, cfg):
     if " " in module_name:
         raise EmbodyError("No spaces allowed in module names")
-    ctx = dict(cfg)
     src_dir = cfg.get('src_dir', '')
     test_dir = cfg.get('test_dir', '')
     src_basename = module_name + '.c'
@@ -80,16 +79,28 @@ def generate_module(module_name, cfg):
     src_filename = path.join(src_dir, src_basename)
     header_filename = path.join(src_dir, header_basename)
     test_filename = path.join(test_dir, test_basename)
-    ctx['year'] = date.today().year
-    ctx['use_include_guard'] = False
-    ctx['module_name'] = module_name
-    ctx['filename'] = src_basename
-    _generate_file(src_filename, 'Template.c', ctx)
-    ctx['filename'] = test_basename
-    _generate_file(test_filename, 'TestTemplate.cpp', ctx)
-    ctx['use_include_guard'] = True
-    ctx['filename'] = header_basename
-    _generate_file(header_filename, 'Template.h', ctx)
+    # first set the common attributes
+    ctx_common = cfg.copy()
+    ctx_common['year'] = date.today().year
+    ctx_common['module_name'] = module_name
+
+    ctx_src = ctx_common.copy()
+    ctx_src['use_include_guard'] = False
+    ctx_src['filename'] = src_basename
+    ctx_src['project_includes'] = [header_basename]
+    _generate_file(src_filename, 'Template.c', ctx_src)
+
+    ctx_test = ctx_common.copy()
+    ctx_test['use_include_guard'] = False
+    ctx_test['filename'] = test_basename
+    ctx_test['project_includes'] = [header_basename]
+    _generate_file(test_filename, 'TestTemplate.cpp', ctx_test)
+
+    ctx_header = ctx_common.copy()
+    ctx_header['use_include_guard'] = True
+    ctx_header['filename'] = header_basename
+    _generate_file(header_filename, 'Template.h', ctx_header)
+
     logger.info("\nDon't forget to add %s and %s to your build system" %
                 (src_basename, test_basename))
 
