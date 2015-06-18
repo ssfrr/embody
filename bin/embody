@@ -4,51 +4,65 @@
 
 embody
 
-Tools for embedded C development. Currently just generates fake implementations
-from C header files. Configuration can be given as command line options or in a
-.embodyrc.yaml file, or in .embody/config.yaml. These config files can be
-placed in $HOME, or in the project directory. More specific config files (e.g.
-per project) override more general ones (e.g. in $HOME). Command line arguments
-take precedence.
+Usage:
+ embody project [options] <name>
+ embody module [options] <name>
+ embody fake [options] <infile> [-- <cppargs>...]
+ embody dumpconfig [options] [outfile]
 
-Configuration files are a yaml dictionary. Keys are in the format of
-'COMMAND_OPTION'. For example, to set the prefix for fake generation, you could
-use `fake_prefix: "myprefix"`. Pro Tip: use the `-v` option to see where embody
-has loaded the configuration.
+embody is a set of tools for embedded C development. Configuration can be given
+as command line options or in a .embodyrc.yaml file, or in .embody/config.yaml.
+These config files can be placed in $HOME, or in the project directory. More
+specific config files (e.g.  per project) override more general ones (e.g. in
+$HOME). Command line arguments take precedence.
+
+Valid configuration keys are:
+
+    cpp_args
+    project_root
+    src_dir
+    test_dir
+    fake_dir
+    project_name
+    copyright_holder
+    author
+    fake_prefix
+
+For example, to set the prefix for fake files, use `fakeprefix: "myprefix"`.
+Pro Tip: use the `-v` option to see where embody has loaded the configuration.
 
 Subcommands:
-    fake
-        Generate a fake header/implementation pair that implements the given
-        header file
-
     project
         Generate an initial skeleton project
 
     module
         Generate a fake module within the current project
 
-    showconfig
-        Show the loaded configuration (use the -v flag to see where it's being
-        loaded from)
+    fake
+        Generate a fake header/implementation pair that implements the given
+        header file. You can supply arguments to the C Preprocessor that will
+        be used during parsing.
 
-Usage:
- embody fake [options] <header> [-- <cppargs>...]
- embody project [options] <name>
- embody module [options] <name>
- embody showconfig [options]
- embody test
-
+    dumpconfig
+        Dump the loaded configuration to a file. (use the -v flag to see where
+        it's being loaded from). If no output file is given it will be dumped
+        to stdout.
 
 Options:
- -d <outdir>, --outdir=<outdir>     Directory for generated header and source
- -t <testdir>, --testdir=<testdir>  Directory for generated test files
- -s <outsrc>, --outsrc=<outsrc>     Filename for generated source file
-                                    (Overrides -d option)
- -h <outhead>, --outhead=<outhead>  Filename for generated header file
-                                    (Overrides -d option)
- -p <prefix>, --prefix=<prefix>     Prefix for generated file (default: Fake)
- -v, --verbose                      Print extra info
- --help                             Print this helpful message
+ -p <name> --project=<name>       Project name used when generating modules
+                                  and fakes
+ -a <name> --author=<name>        the author of the code.
+ -c <name> --copyright=<name>     The copyright holder. If not given then the
+                                  author is used.
+ -d <dir>, --srcdir=<dir>         Directory for generated header and source
+ -t <dir>, --testdir=<dir>        Directory for generated test files
+ -k <dir>, --fakedir=<dir>        Directory for generated fakes
+ -o <file>, --outfile=<file>      Filename base for generated files. `.c` and
+                                  `.h` will be appended as necessary
+ -f <str>, --fakeprefix=<str>     Filename prefix for generated files
+                                  (default: Fake)
+ -v, --verbose                    Print extra info
+ --help                           Print this helpful message
 '''
 
 import sys
@@ -56,7 +70,7 @@ from docopt import docopt
 import embody
 import coloredlogs
 import logging
-import pprint
+import yaml
 
 logger = logging.getLogger()
 logger.addHandler(coloredlogs.ColoredStreamHandler(
@@ -67,33 +81,46 @@ logger.addHandler(coloredlogs.ColoredStreamHandler(
 logger.setLevel(logging.INFO)
 
 
+def config_from_args(args):
+    '''This maps values from the command line arguments into the config dict'''
+    argmap = [
+        ('--project', 'project_name'),
+        ('--author', 'author'),
+        ('--copyright', 'copyright_holder'),
+        ('--srcdir', 'src_dir'),
+        ('--testdir', 'test_dir'),
+        ('--fakedir', 'fake_dir'),
+        ('--fakeprefix', 'fake_prefix')
+    ]
+    cfg = {}
+    for argname, cfgname in argmap:
+        if args[argname] is not None:
+            cfg[cfgname] = args[argname]
+    return cfg
+
+
 def dispatch_cmd(args):
-    in_filename = args['<header>']
-    out_dir = args['--outdir']
-    out_src = args['--outsrc']
-    out_header = args['--outhead']
-    prefix = args['--prefix']
-    cpp_args = args['<cppargs>']
-    if len(cpp_args) > 0 and cpp_args[0] == '--':
-        cpp_args = cpp_args[1:]
-    # generate_fake distinguishes between an empty list of cpp_args, meaning
-    # don't give any arguments, or None, which means pull the arguments from
-    # the configuration. We don't have that flexibility from the command line,
-    # so if the user doesn't supply any args we assume we want to load them.
-    if len(cpp_args) == 0:
-        cpp_args = None
+    # pull out the arguments that are part of the config file system. We'll
+    # pass them into embody.get_config to get the resulting configuration.
+    cmdline_options = config_from_args(args)
+    # if the user provided a `--` for cppargs, then the following arguments
+    # (which might be empty) should override the configured value. If they
+    # didn't then just let the config decide
+    cppargs = args['<cppargs>']
+    if len(cppargs) > 0 and cppargs[0] == '--':
+        cmdline_options['cpp_args'] = cppargs[1:]
+    cfg = embody.get_config(cmdline_options)
     if args['fake']:
-        embody.generate_fake(in_filename, out_dir, out_src, out_header,
-                             prefix, cpp_args)
-    elif args['test']:
-        embody.test_templates()
+        embody.generate_fake(args['<name>'], cfg),
     elif args['module']:
-        logger.warning("Not Implemented")
+        embody.generate_module(args['<name>'], cfg)
     elif args['project']:
         logger.warning("Not Implemented")
-    elif args['showconfig']:
-        config = embody.get_config()
-        pprint.pprint(config)
+    elif args['dumpconfig']:
+        if args['outfile']:
+            embody.save_config(cfg, args['outfile'])
+        else:
+            print(yaml.safe_dump(cfg))
 
 
 def main(args):

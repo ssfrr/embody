@@ -2,9 +2,12 @@
  * {{ module_name }} module.{% if project_name %} Part of project {{ project_name }}.{% endif %}
 
  *
- * Copyright {{ year }} {{ author }}
-{% if written_by %}
- * Written by {{ written_by }}
+ * Copyright {{ year }} {% if copyright_holder %}
+{{ copyright_holder }}{% else %}
+{{ author }}{% endif %}
+
+{% if copyright_holder %}
+ * Written by {{ author }}
 {% endif %}
  */
 
