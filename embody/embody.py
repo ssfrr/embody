@@ -126,7 +126,8 @@ def get_config(cmd_args=None, force_reload=False):
         loaded_config = {}
         loaded_config.update(_get_dir_config(os.getenv('HOME')))
         project_root = _find_project_root(os.getcwdu())
-        loaded_config.update(_get_dir_config(project_root))
+        if project_root is not None:
+            loaded_config.update(_get_dir_config(project_root))
         if cmd_args is not None:
             loaded_config.update(cmd_args)
         _set_config_defaults(loaded_config, project_root)
