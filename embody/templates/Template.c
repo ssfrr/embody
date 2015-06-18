@@ -1,6 +1,9 @@
 {% extends "Common.c" %}
 
 {% block body %}
+{% filter section_header %}Static Data{% endfilter %}
+
+
 {% filter section_header %}Static Function Declarations{% endfilter %}
 
 
