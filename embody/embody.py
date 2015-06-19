@@ -204,10 +204,10 @@ def _generate_file(filename, template_filename, render_context):
 
 def _find_project_root(start_path):
     root_files = {'.git', '.hg'}
-    dirfiles = set(os.listdir(start_path))
     current_path = start_path
     while True:
         logger.debug("Looking for project root in %s" % current_path)
+        dirfiles = set(os.listdir(current_path))
         if dirfiles.intersection(root_files):
             return current_path
         else:
